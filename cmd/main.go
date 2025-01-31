@@ -320,7 +320,9 @@ func run(mainConfig Config) (err error) {
 		}
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), mainConfig.options)
+	config := ctrl.GetConfigOrDie()
+	config.UserAgent = "spire-controller-manager"
+	mgr, err := ctrl.NewManager(config, mainConfig.options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
