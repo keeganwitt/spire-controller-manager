@@ -385,3 +385,29 @@ tlsConfig:
 	require.Equal(t, []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}, ctrlConfig.TLSConfig.CipherSuites)
 	require.Equal(t, []string{"X25519", "secp256r1"}, ctrlConfig.TLSConfig.CurvePreferences)
 }
+
+func TestLoadAgentCoverageConfig(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, spirev1alpha1.AddToScheme(scheme))
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(fileContent+`
+agentCoverage:
+  namespace: identity
+  daemonSetSelector:
+    matchLabels:
+      app.kubernetes.io/instance: identity-installation
+  startupGrace: 2m
+  interval: 15s
+`), 0600))
+	config := &spirev1alpha1.ControllerManagerConfig{}
+	require.NoError(t, spirev1alpha1.LoadOptionsFromFile(path, scheme, &ctrl.Options{}, config, false))
+	require.Equal(t, "identity", config.AgentCoverage.Namespace)
+	require.Equal(t, "identity-installation", config.AgentCoverage.DaemonSetSelector.MatchLabels["app.kubernetes.io/instance"])
+	require.Equal(t, 2*time.Minute, config.AgentCoverage.StartupGrace.Duration)
+	require.Equal(t, 15*time.Second, config.AgentCoverage.Interval.Duration)
+	cloned := config.DeepCopy()
+	cloned.AgentCoverage.DaemonSetSelector.MatchLabels["app.kubernetes.io/instance"] = "another-installation"
+	cloned.AgentCoverage.StartupGrace.Duration = 0
+	require.Equal(t, "identity-installation", config.AgentCoverage.DaemonSetSelector.MatchLabels["app.kubernetes.io/instance"])
+	require.Equal(t, 2*time.Minute, config.AgentCoverage.StartupGrace.Duration)
+}

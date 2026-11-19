@@ -55,6 +55,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	spirev1alpha1 "github.com/spiffe/spire-controller-manager/api/v1alpha1"
 	"github.com/spiffe/spire-controller-manager/internal/controller"
+	"github.com/spiffe/spire-controller-manager/pkg/agentcoverage"
 	"github.com/spiffe/spire-controller-manager/pkg/common/tlspolicy"
 	"github.com/spiffe/spire-controller-manager/pkg/metrics"
 	"github.com/spiffe/spire-controller-manager/pkg/reconciler"
@@ -317,7 +318,26 @@ func parseConfig() (Config, error) {
 		setupLog.Info("certDir configuration is ignored", "certDir", retval.ctrlConfig.ControllerManagerConfigurationSpec.Webhook.CertDir)
 	}
 
+	if err := validateAgentCoverage(retval); err != nil {
+		return retval, err
+	}
 	return retval, nil
+}
+
+func validateAgentCoverage(config Config) error {
+	if config.ctrlConfig.AgentCoverage == nil {
+		return nil
+	}
+	if config.ctrlConfig.StaticManifestPath != nil {
+		return errors.New("agent coverage is not supported in static mode")
+	}
+	if len(config.options.Cache.DefaultNamespaces) != 0 {
+		return errors.New("agent coverage requires an unrestricted pod cache to account for active workloads")
+	}
+	if config.options.Metrics.BindAddress == "0" {
+		return errors.New("agent coverage requires the metrics endpoint to be enabled")
+	}
+	return agentcoverage.ValidateConfig(config.ctrlConfig.AgentCoverage)
 }
 
 func dialSPIREServer(ctx context.Context, ctrlConfig spirev1alpha1.ControllerManagerConfig, trustDomain spiffeid.TrustDomain) (spireapi.Client, error) {
@@ -433,6 +453,11 @@ func run(mainConfig Config) (err error) {
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
+	}
+	if mainConfig.ctrlConfig.AgentCoverage != nil {
+		if err := agentcoverage.Register(mgr, mainConfig.ctrlConfig.AgentCoverage); err != nil {
+			return fmt.Errorf("configure agent coverage: %w", err)
+		}
 	}
 
 	var entryReconciler reconciler.Reconciler

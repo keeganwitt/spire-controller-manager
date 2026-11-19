@@ -90,6 +90,32 @@ type ControllerManagerConfig struct {
 	// as the admission webhook server.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+
+	// AgentCoverage enables optional Kubernetes agent DaemonSet coverage metrics.
+	// +optional
+	AgentCoverage *AgentCoverageConfig `json:"agentCoverage,omitempty"`
+}
+
+// AgentCoverageConfig configures optional agent DaemonSet discovery and coverage metrics.
+type AgentCoverageConfig struct {
+	// Namespace limits discovery to this namespace.
+	Namespace string `json:"namespace"`
+
+	// DaemonSetName selects one DaemonSet instead of label-based discovery.
+	// +optional
+	DaemonSetName string `json:"daemonSetName,omitempty"`
+
+	// DaemonSetSelector defaults to app.kubernetes.io/name=spire-agent when DaemonSetName is unset.
+	// +optional
+	DaemonSetSelector *metav1.LabelSelector `json:"daemonSetSelector,omitempty"`
+
+	// StartupGrace defaults to ten minutes and applies only to nodes without active workloads.
+	// +optional
+	StartupGrace *metav1.Duration `json:"startupGrace,omitempty"`
+
+	// Interval defaults to thirty seconds.
+	// +optional
+	Interval *metav1.Duration `json:"interval,omitempty"`
 }
 
 // TLSConfig configures TLS security settings for terminating endpoints.

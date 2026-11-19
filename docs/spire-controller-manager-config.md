@@ -26,6 +26,7 @@ the following fields are defined:
 | `staticManifestPath`                 | OPTIONAL |                                                  | If specified, manifests will be read from disk instead of from Kubernetes                                                                                                                                     |
 | `grpc`                               | OPTIONAL |                                                  | Allows configuring the GRPC config used when connecting to the SPIRE server API.                                                                                                                              |
 | `tlsConfig`                         | OPTIONAL |                                                  | TLS security config for terminating endpoints such as the admission webhook server. When unset, the minimum TLS version defaults to TLS 1.2.                                                                                  |
+| `agentCoverage` | OPTIONAL | disabled | Enables optional Kubernetes agent DaemonSet coverage metrics. See [Agent Coverage](agent-coverage.md). |
 
 ### TLS Config
 

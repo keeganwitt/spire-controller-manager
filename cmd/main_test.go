@@ -11,6 +11,7 @@ import (
 	spirev1alpha1 "github.com/spiffe/spire-controller-manager/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -69,4 +70,32 @@ func freeTCPAddr(t *testing.T) string {
 	addr := l.Addr().String()
 	require.NoError(t, l.Close())
 	return addr
+}
+
+func TestAgentCoverageModes(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		change    func(*Config)
+		errorText string
+	}{
+		{name: "Kubernetes mode"},
+		{name: "disabled in static mode", change: func(c *Config) { c.ctrlConfig.AgentCoverage = nil; c.ctrlConfig.StaticManifestPath = new(string) }},
+		{name: "static mode", change: func(c *Config) { c.ctrlConfig.StaticManifestPath = new(string) }, errorText: "static mode"},
+		{name: "namespace cache map", change: func(c *Config) { c.options.Cache.DefaultNamespaces = map[string]cache.Config{"apps": {}} }, errorText: "unrestricted pod cache"},
+		{name: "metrics disabled", change: func(c *Config) { c.options.Metrics.BindAddress = "0" }, errorText: "metrics endpoint"},
+		{name: "invalid config", change: func(c *Config) { c.ctrlConfig.AgentCoverage.Namespace = "" }, errorText: "namespace"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			config := Config{ctrlConfig: spirev1alpha1.ControllerManagerConfig{AgentCoverage: &spirev1alpha1.AgentCoverageConfig{Namespace: "agents"}}}
+			if tt.change != nil {
+				tt.change(&config)
+			}
+			err := validateAgentCoverage(config)
+			if tt.errorText != "" {
+				require.ErrorContains(t, err, tt.errorText)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -25,6 +25,13 @@ rules:
   - patch
   - watch
 - apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - get
+  - list
+- apiGroups:
   - spire.spiffe.io
   resources:
   - clusterfederatedtrustdomains
